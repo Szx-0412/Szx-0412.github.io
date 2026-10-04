@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>私密聊天室</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    height: 100vh; height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    background: radial-gradient(circle at 20% 20%, #1e293b, #0f172a 70%);
+  }
+  .chat-app {
+    width: 100%; max-width: 480px;
+    height: min(800px, 100%);
+    display: flex; flex-direction: column;
+    background: #eef1f8; border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  }
+  .chat-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #4f8cff, #6f5cff);
+    color: #fff; flex-shrink: 0;
+  }
+  .chat-header .logo {
+    width: 42px; height: 42px; flex-shrink: 0;
+    border-radius: 50%; background: rgba(255,255,255,.22);
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .chat-header .info { min-width: 0; }
+  .chat-header .info h1 {
+    font-size: 16px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
+  }
+  .chat-header .info p {
+    font-size: 12px; opacity: .9; margin-top: 2px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #facc15; transition: background .3s; }
+  .dot.on { background: #4ade80; animation: pulse 2s infinite; }
+  .dot.off { background: #f87171; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
+  .header-actions { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+  .ghost-btn {
+    background: rgba(255,255,255,.18); border: none; color: #fff;
+    font-size: 12px; padding: 6px 10px; border-radius: 20px;
+    cursor: pointer; font-family: inherit; white-space: nowrap; transition: background .2s;
+  }
+  .ghost-btn:hover { background: rgba(255,255,255,.34); }
+  .chat-body {
+    flex: 1; overflow-y: auto; padding: 18px 14px 8px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .chat-body::-webkit-scrollbar { width: 6px; }
+  .chat-body::-webkit-scrollbar-thumb { background: #c6cddc; border-radius: 3px; }
+  .system {
+    align-self: center; font-size: 12px; color: #7b8494;
+    background: rgba(255,255,255,.85); padding: 4px 12px;
+    border-radius: 12px; text-align: center; max-width: 90%; line-height: 1.5;
+  }
+  .msg {
+    display: flex; gap: 8px; align-items: flex-end; max-width: 82%;
+    animation: pop .26s cubic-bezier(.34,1.4,.64,1);
+  }
+  @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .msg.me { align-self: flex-end; flex-direction: row-reverse; }
+  .msg .avatar {
+    width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #fff; user-select: none;
+  }
+  .msg.me .avatar { background: linear-gradient(135deg, #f7a23b, #f56b6b); }
+  .msg .wrap { display: flex; flex-direction: column; min-width: 0; }
+  .msg.me .wrap { align-items: flex-end; }
+  .msg .name {
+    font-size: 12px; color: #7b8494; padding: 0 4px 3px;
+    max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bubble {
+    padding: 10px 14px; border-radius: 16px;
+    font-size: 15px; line-height: 1.55; word-break: break-word; white-space: pre-wrap;
+  }
+  .msg.other .bubble {
+    background: #fff; color: #1f2937; border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(16,24,40,.08);
+  }
+  .msg.me .bubble {
+    background: linear-gradient(135deg, #4f8cff, #6f5cff); color: #fff;
+    border-bottom-right-radius: 4px; box-shadow: 0 4px 12px rgba(79,140,255,.32);
+  }
+  .time { font-size: 11px; color: #98a2b3; padding: 2px 4px 0; }
+  .chat-footer {
+    flex-shrink: 0; display: flex; align-items: flex-end; gap: 8px;
+    padding: 10px 12px; background: #fff; border-top: 1px solid #e6e9f0;
+  }
+  #input {
+    flex: 1; resize: none; border: none; outline: none;
+    font-family: inherit; font-size: 15px; line-height: 1.45; max-height: 108px;
+    padding: 11px 14px; border-radius: 20px; background: #f1f3f9; color: #1f2937;
+    transition: background .2s;
+  }
+  #input:focus { background: #e9edf7; }
+  #sendBtn {
+    flex-shrink: 0; height: 42px; padding: 0 20px; border: none;
+    border-radius: 21px; background: linear-gradient(135deg, #4f8cff, #6f5cff);
+    color: #fff; font-size: 15px; font-weight: 500; cursor: pointer;
+    font-family: inherit; transition: transform .15s, box-shadow .2s, opacity .2s;
+    box-shadow: 0 4px 14px rgba(79,140,255,.38);
+  }
+  #sendBtn:hover { transform: translateY(-1px); }
+  #sendBtn:active { transform: translateY(0) scale(.97); }
+  #sendBtn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; transform: none; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,.78);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10;
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: #fff; border-radius: 16px; padding: 24px;
+    width: 100%; max-width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,.4);
+  }
+  .modal h2 { font-size: 18px; color: #1f2937; margin-bottom: 6px; text-align: center; }
+  .modal p { font-size: 13px; color: #667085; margin-bottom: 16px; text-align: center; line-height: 1.6; }
+  .modal input {
+    width: 100%; padding: 11px 14px; border-radius: 10px;
+    border: 1px solid #d0d5dd; font-size: 15px; font-family: inherit;
+    outline: none; margin-bottom: 12px;
+  }
+  .modal input:focus { border-color: #4f8cff; box-shadow: 0 0 0 3px rgba(79,140,255,.15); }
+  .modal button {
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #4f8cff, #6f5cff); color: #fff;
+    font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer; margin-top: 4px;
+  }
+  .modal button.sec { background: #f1f3f9; color: #475467; margin-top: 8px; }
+  .link-box {
+    background: #f1f3f9; border-radius: 10px; padding: 10px 12px;
+    font-size: 12px; color: #475467; word-break: break-all;
+    line-height: 1.6; margin-bottom: 12px; max-height: 90px; overflow-y: auto;
+  }
+</style>
+</head>
+<body>
+
+<div class="chat-app">
+  <header class="chat-header">
+    <div class="logo">🔒</div>
+    <div class="info">
+      <h1 id="roomTitle">加载中…</h1>
+      <p><span class="dot" id="statusDot"></span><span id="statusText">初始化…</span></p>
+    </div>
+    <div class="header-actions">
+      <button class="ghost-btn" id="inviteBtn">邀请</button>
+      <button class="ghost-btn" id="nameBtn">昵称</button>
+    </div>
+  </header>
+  <main class="chat-body" id="chatBody"></main>
+  <footer class="chat-footer">
+    <textarea id="input" rows="1" placeholder="输入消息…（Enter 发送）"></textarea>
+    <button id="sendBtn">发送</button>
+  </footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">设置</h2>
+    <p id="modalDesc"></p>
+    <div id="modalBody"></div>
+    <button id="modalOk">确定</button>
+    <button class="sec" id="modalCancel" style="display:none">取消</button>
+  </div>
+</div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ========== 配置：替换为你的 Supabase 项目信息 ========== */
+  const SUPABASE_URL  = 'https://你的项目ID.supabase.co';
+  const SUPABASE_ANON = '你的anon-key';
+  /* ====================================================== */
+
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  /* ---------- 元素 ---------- */
+  const $ = id => document.getElementById(id);
+  const chatBody = $('chatBody'), input = $('input'), sendBtn = $('sendBtn');
+  const nameBtn = $('nameBtn'), inviteBtn = $('inviteBtn');
+  const roomTitle = $('roomTitle'), statusDot = $('statusDot'), statusText = $('statusText');
+  const overlay = $('overlay'), modalTitle = $('modalTitle'), modalDesc = $('modalDesc');
+  const modalBody = $('modalBody'), modalOk = $('modalOk'), modalCancel = $('modalCancel');
+
+  /* ---------- 状态 ---------- */
+  let user = null;        // Supabase 匿名用户
+  let profile = null;     // { id, username }
+  let room = null;        // { id, name }
+  let channel = null;     // Realtime 频道
+  const rendered = new Set();  // 已渲染的消息 id
+
+  /* ---------- 工具 ---------- */
+  const pad = n => String(n).padStart(2, '0');
+  const fmtTime = ts => {
+    const d = new Date(ts);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const colorOf = str => {
+    let h = 0;
+    str = String(str || '?');
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+    return `hsl(${h}, 62%, 55%)`;
+  };
+  const scrollBottom = () => requestAnimationFrame(() => { chatBody.scrollTop = chatBody.scrollHeight; });
+
+  function addSystem(text) {
+    const el = document.createElement('div');
+    el.className = 'system';
+    el.textContent = text;
+    chatBody.appendChild(el);
+    scrollBottom();
+  }
+
+  /* ---------- 渲染消息 ---------- */
+  function renderMessage(m, animate = true) {
+    if (!m || rendered.has(m.id)) return;
+    rendered.add(m.id);
+
+    const mine = m.user_id === user.id;
+    const name = m.profiles?.username || m.username || '匿名';
+
+    const el = document.createElement('div');
+    el.className = 'msg ' + (mine ? 'me' : 'other');
+    if (!animate) el.style.animation = 'none';
+
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.textContent = name.charAt(0).toUpperCase();
+    if (!mine) av.style.background = colorOf(m.user_id);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'wrap';
+
+    if (!mine) {
+      const nm = document.createElement('div');
+      nm.className = 'name';
+      nm.textContent = name;
+      wrap.appendChild(nm);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = m.content;
+
+    const time = document.createElement('div');
+    time.className = 'time';
+    time.textContent = fmtTime(m.created_at);
+
+    wrap.append(bubble, time);
+    el.append(av, wrap);
+    chatBody.appendChild(el);
+    if (animate) scrollBottom();
+  }
+
+  /* ---------- 弹窗 ---------- */
+  function openModal(opts) {
+    modalTitle.textContent = opts.title;
+    modalDesc.textContent = opts.desc || '';
+    modalDesc.style.display = opts.desc ? '' : 'none';
+    modalBody.innerHTML = opts.html || '';
+    modalOk.textContent = opts.okText || '确定';
+    modalCancel.style.display = opts.onCancel ? '' : 'none';
+    overlay.classList.add('show');
+
+    modalOk.onclick = () => { const r = opts.onOk && opts.onOk(); if (r !== false) closeModal(); };
+    modalCancel.onclick = () => { closeModal(); opts.onCancel && opts.onCancel(); };
+    if (opts.focus) setTimeout(() => $(opts.focus)?.focus(), 60);
+  }
+  function closeModal() { overlay.classList.remove('show'); }
+
+  /* ---------- 初始化流程 ---------- */
+  async function init() {
+    statusText.textContent = '匿名登录中…';
+
+    // 1. 匿名登录（如果已有会话则复用）
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      user = session.user;
+    } else {
+      const { data, error } = await db.auth.signInAnonymously();
+      if (error) { statusText.textContent = '登录失败：' + error.message; return; }
+      user = data.user;
+    }
+
+    // 2. 读取或创建 profile
+    const { data: p } = await db.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    if (p) {
+      profile = p;
+    } else {
+      // 新用户，提示设置昵称
+      askName(true);
+      return;
+    }
+
+    // 3. 确定房间（从 URL 参数读取，默认 lobby）
+    const params = new URLSearchParams(location.search);
+    const roomName = (params.get('room') || 'lobby').replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '').slice(0, 32) || 'lobby';
+
+    await joinRoom(roomName);
+  }
+
+  /* ---------- 加入房间 ---------- */
+  async function joinRoom(roomName) {
+    statusText.textContent = '加入房间…';
+
+    // 查找或创建房间
+    let { data: r } = await db.from('rooms').select('*').eq('name', roomName).maybeSingle();
+    if (!r) {
+      const { data: created, error } = await db.from('rooms')
+        .insert({ name: roomName, created_by: user.id })
+        .select().single();
+      if (error) { statusText.textContent = '创建房间失败'; return; }
+      r = created;
+    }
+    room = r;
+    roomTitle.textContent = '房间：' + room.name;
+
+    // 加入房间（如果尚未加入）
+    const { data: membership } = await db.from('room_members')
+      .select('*').eq('room_id', room.id).eq('user_id', user.id).maybeSingle();
+
+    if (!membership) {
+      await db.from('room_members').insert({ room_id: room.id, user_id: user.id });
+    }
+
+    // 加载历史消息（最近 50 条）
+    const { data: msgs } = await db.from('messages')
+      .select('*, profiles(username)')
+      .eq('room_id', room.id)
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (msgs && msgs.length) {
+      msgs.forEach(m => renderMessage(m, false));
+      scrollBottom();
+    } else {
+      addSystem('欢迎来到「' + room.name + '」，还没有消息');
+    }
+
+    // 订阅 Realtime
+    subscribeRealtime();
+
+    statusDot.className = 'dot on';
+    statusText.textContent = '已连接 · ' + room.name;
+
+    // 3. 更新昵称
+    const { data: p } = await db.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    if (p) {
+      profile = p;
+      setupUI();
+      loadHistory();
+    } else {
+      askName(true);
+    }
+  }
+
+  /* ---------- Realtime 订阅 ---------- */
+  function subscribeRealtime() {
+    if (channel) db.removeChannel(channel);
+
+    channel = db.channel('room:' + room.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: 'room_id=eq.' + room.id,
+      }, async (payload) => {
+        // 新消息到达，补上用户名再渲染
+        const msg = payload.new;
+        if (rendered.has(msg.id)) return;
+        const { data: prof } = await db.from('profiles').select('username').eq('id', msg.user_id).maybeSingle();
+        msg.profiles = prof;
+        renderMessage(msg, true);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          statusDot.className = 'dot on';
+          statusText.textContent = '已连接 · ' + room.name;
+        }
+      });
+  }
+
+  /* ---------- 发送消息 ---------- */
+  async function send() {
+    const text = input.value.trim();
+    if (!text || !room || !user) return;
+
+    input.value = '';
+    autoResize();
+    updateSendState();
+
+    const { error } = await db.from('messages').insert({
+      room_id: room.id,
+      user_id: user.id,
+      content: text,
+    });
+
+    if (error) {
+      addSystem('发送失败：' + error.message);
+    }
+    // 消息会通过 Realtime 推送回来，不需要手动渲染
+  }
+
+  /* ---------- 昵称设置 ---------- */
+  function askName(isFirst) {
+    openModal({
+      title: isFirst ? '设置昵称' : '修改昵称',
+      desc: isFirst ? '输入一个昵称，其他成员就能看到你了' : '换一个昵称吧',
+      html: `<input id="f_name" maxlength="12" placeholder="你的昵称" value="${(profile?.username || '').replace(/"/g, '&quot;')}">`,
+      okText: isFirst ? '开始聊天' : '保存',
+      focus: 'f_name',
+      onOk: async () => {
+        const v = $('f_name').value.trim();
+        if (!v) { $('f_name').focus(); return false; }
+
+        if (profile) {
+          await db.from('profiles').update({ username: v }).eq('id', user.id);
+          profile.username = v;
+        } else {
+          const { data } = await db.from('profiles')
+            .upsert({ id: user.id, username: v }).select().single();
+          profile = data || { id: user.id, username: v };
+        }
+
+        closeModal();
+
+        if (isFirst) {
+          // 首次设置昵称后，继续加入房间
+          const params = new URLSearchParams(location.search);
+          const roomName = (params.get('room') || 'lobby').replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '').slice(0, 32) || 'lobby';
+          await joinRoom(roomName);
+        } else {
+          addSystem('昵称已更新为：' + v);
+        }
+        return true;
+      }
+    });
+  }
+
+  nameBtn.addEventListener('click', () => askName(false));
+
+  /* ---------- 邀请 ---------- */
+  inviteBtn.addEventListener('click', () => {
+    const url = location.origin + location.pathname + '?room=' + encodeURIComponent(room?.name || 'lobby');
+    openModal({
+      title: '邀请朋友',
+      desc: '把链接发给对方，打开就能进同一个房间',
+      html: `<div class="link-box">${url}</div>`,
+      okText: '复制链接',
+      onOk: () => {
+        const done = () => addSystem('邀请链接已复制');
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(url).then(done, () => fallbackCopy(url, done));
+        } else {
+          fallbackCopy(url, done);
+        }
+      }
+    });
+  });
+
+  function fallbackCopy(text, cb) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); cb(); } catch (e) { alert('复制失败：\n' + text); }
+    ta.remove();
+  }
+
+  /* ---------- 输入框 ---------- */
+  function autoResize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 108) + 'px';
+  }
+  function updateSendState() {
+    sendBtn.disabled = !input.value.trim() || !room;
+  }
+
+  input.addEventListener('input', () => { autoResize(); updateSendState(); });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  });
+  sendBtn.addEventListener('click', send);
+
+  /* ---------- 离开时清理 ---------- */
+  window.addEventListener('beforeunload', () => {
+    if (channel) db.removeChannel(channel);
+  });
+
+  /* ---------- 启动 ---------- */
+  init();
+})();
+</script>
+</body>
+</html>
