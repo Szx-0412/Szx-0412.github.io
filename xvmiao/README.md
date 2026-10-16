@@ -1,1 +1,1 @@
-[下载文件](xvmiao/pictures.rar)
+[下载文件](pictures.rar)
