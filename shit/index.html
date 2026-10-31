@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>冲屎记 - 猎奇版</title>
+    <style>
+        /* 初始暗黑游戏风格 */
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'Microsoft YaHei', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 0.5s, color 0.5s;
+        }
+
+        #game-container {
+            background-color: #2a2a2a;
+            border: 2px dashed #555;
+            border-radius: 10px;
+            padding: 30px;
+            width: 450px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            text-align: center;
+            position: relative;
+            transition: opacity 0.5s;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.4s;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        h1, h2 {
+            margin: 10px 0;
+            color: #ff9800;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        p {
+            line-height: 1.6;
+            margin: 15px 0;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 4px #2E7D32;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button.danger {
+            background-color: #f44336;
+            box-shadow: 0 4px #b71c1c;
+        }
+
+        button.danger:hover {
+            background-color: #da190b;
+        }
+
+        /* 画面展示框 */
+        .display-box {
+            width: 90%;
+            height: 120px;
+            background-color: #111;
+            border: 2px solid #444;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            margin: 15px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .toilet {
+            font-size: 40px;
+            opacity: 0.3;
+        }
+
+        .poop {
+            position: absolute;
+            font-size: 30px;
+            animation: floatUp 2s linear infinite;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(120px) scale(0.8); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.2); opacity: 0; }
+        }
+
+        .label-tag {
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: #888;
+            writing-mode: vertical-rl;
+            background: #222;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        /* ========================================= */
+        /* Nginx 错误页面专用样式 (纯白底黑字) */
+        /* ========================================= */
+        body.nginx-mode {
+            background-color: #ffffff;
+            color: #000000;
+            display: block; /* 取消flex居中，让页面自然靠上 */
+            font-family: Arial, Helvetica, sans-serif; /* 经典无衬线字体 */
+        }
+
+        body.nginx-mode #game-container {
+            display: none; /* 隐藏游戏主框 */
+        }
+
+        #nginx-page {
+            display: none;
+            text-align: center;
+            margin-top: 10vh; /* 距离顶部 10% */
+            padding: 20px;
+        }
+
+        body.nginx-mode #nginx-page {
+            display: block;
+        }
+
+        #nginx-page h1 {
+            font-size: 26px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 20px;
+            text-shadow: none; /* 移除游戏里的阴影 */
+        }
+
+        #nginx-page hr {
+            border: 0;
+            border-top: 1px solid #d3d3d3;
+            width: 70%;
+            margin: 20px auto;
+        }
+
+        #nginx-page .center-text {
+            font-size: 18px;
+            margin: 15px 0;
+            color: #333;
+        }
+
+        #nginx-page .small-text {
+            font-size: 14px;
+            color: #666;
+            margin: 25px 0;
+        }
+
+        /* Nginx 风格的重试按钮 */
+        #nginx-page .retry-link {
+            background: none;
+            border: none;
+            color: #0056b3;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: none;
+            padding: 0;
+            margin-top: 20px;
+            display: inline-block;
+        }
+
+        #nginx-page .retry-link:hover {
+            background: none;
+            text-decoration: underline;
+            color: #003d82;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 游戏主体容器 -->
+<div id="game-container">
+
+    <!-- 1. 开始界面 -->
+    <div id="start-screen" class="screen active">
+        <h1>冲屎记</h1>
+        <p style="color: #888;">(极度猎奇警告)</p>
+        <button onclick="showScreen('warning-screen')">进入游戏</button>
+    </div>
+
+    <!-- 2. 警告界面 -->
+    <div id="warning-screen" class="screen">
+        <h2>警告</h2>
+        <p>该游戏极度猎奇，<br>是否进入？</p>
+        <div>
+            <button class="danger" onclick="showScreen('start-screen')">不进入</button>
+            <button onclick="showScreen('scene1-screen')">仍要进入</button>
+        </div>
+    </div>
+
+    <!-- 3. 场景1 -->
+    <div id="scene1-screen" class="screen">
+        <p>一日，你在1号坑上完厕所。</p>
+        <div class="display-box">
+            <div class="toilet">🚽 🚽 🚽 🚽 🚽</div>
+            <div class="label-tag">5个正常坑</div>
+        </div>
+        <p>是否冲水？</p>
+        <div>
+            <button onclick="showScreen('scene2-screen')">是</button>
+            <button class="danger" onclick="showScreen('end1-screen')">否</button>
+        </div>
+    </div>
+
+    <!-- 4. 结局1 -->
+    <div id="end1-screen" class="screen">
+        <h2 style="color: #f44336;">Game Over</h2>
+        <p>同学被你臭死了。</p>
+        <button onclick="showScreen('start-screen')">返回主页</button>
+    </div>
+
+    <!-- 5. 场景2 -->
+    <div id="scene2-screen" class="screen">
+        <p>2号坑开始冒屎</p>
+        <div class="display-box" id="anim2">
+            <div class="label-tag">简单动画</div>
+        </div>
+        <p>是否在2号坑冲水？</p>
+        <div>
+            <button onclick="showScreen('scene3-screen')">是</button>
+            <button class="danger" onclick="triggerNginxError()">否</button>
+        </div>
+    </div>
+
+    <!-- 6. 场景3 -->
+    <div id="scene3-screen" class="screen">
+        <p>1号坑开始冒屎</p>
+        <div class="display-box" id="anim3">
+             <div class="label-tag">简单动画</div>
+        </div>
+        <p>是否在1号坑冲水？</p>
+        <div>
+            <button onclick="showScreen('scene4-screen')">是</button>
+            <button class="danger" onclick="triggerNginxError()">否</button>
+        </div>
+    </div>
+
+    <!-- 7. 场景4 -->
+    <div id="scene4-screen" class="screen">
+        <p>2号坑又开始冒屎</p>
+        <div class="display-box" id="anim4">
+             <div class="label-tag">简单动画</div>
+        </div>
+        <p>是否在1、2号坑同时冲水？</p>
+        <div>
+            <!-- 选是，触发宕机 -->
+            <button class="danger" onclick="triggerNginxError()">是</button> 
+            <!-- 选否，循环回场景3 -->
+            <button onclick="showScreen('scene3-screen')">否</button> 
+        </div>
+    </div>
+
+</div>
+
+<!-- Nginx 报错页面 (打破第四面墙) -->
+<div id="nginx-page">
+    <h1>666 To Disgusting</h1>
+    <hr>
+    
+    <div class="center-text">
+        <strong>nginx</strong><br><br>
+        掉入沼气池。<br>
+        画面太恶心，Nginx（服务器软件）宕机了。
+    </div>
+    
+    <hr>
+    
+    <div class="small-text">
+        nginx/1.18.0 (Ubuntu)
+    </div>
+    
+    <button class="retry-link" onclick="resetGame()">[ 返回主页 ]</button>
+</div>
+
+<script>
+    // 切换界面逻辑
+    function showScreen(screenId) {
+        // 隐藏所有游戏内的界面
+        const screens = document.querySelectorAll('.screen');
+        screens.forEach(screen => screen.classList.remove('active'));
+        
+        // 显示目标界面
+        document.getElementById(screenId).classList.add('active');
+
+        // 清理旧动画，启动新动画
+        document.querySelectorAll('.display-box').forEach(box => {
+            box.querySelectorAll('.poop').forEach(p => p.remove());
+        });
+
+        if (screenId === 'scene2-screen') startPoopAnim('anim2', 3);
+        if (screenId === 'scene3-screen') startPoopAnim('anim3', 5);
+        if (screenId === 'scene4-screen') startPoopAnim('anim4', 8); // 两个坑一起冒
+    }
+
+    // 冒屎动画生成器
+    function startPoopAnim(containerId, count) {
+        const container = document.getElementById(containerId);
+        
+        for (let i = 0; i < count; i++) {
+            const poop = document.createElement('div');
+            poop.classList.add('poop');
+            poop.innerText = '💩';
+            poop.style.left = (Math.random() * 70 + 15) + '%';
+            poop.style.animationDelay = (Math.random() * 2) + 's';
+            poop.style.animationDuration = (Math.random() * 1.5 + 1.5) + 's';
+            container.appendChild(poop);
+        }
+    }
+
+    // 触发 Nginx 宕机页面
+    function triggerNginxError() {
+        // 给 body 加上 nginx-mode 类，瞬间变成白底报错页
+        document.body.classList.add('nginx-mode');
+    }
+
+    // 从 Nginx 报错页返回游戏
+    function resetGame() {
+        // 移除报错页样式
+        document.body.classList.remove('nginx-mode');
+        // 重置回游戏开始界面
+        showScreen('start-screen');
+    }
+</script>
+
+</body>
+</html>
