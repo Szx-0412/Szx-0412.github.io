@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>在 GitHub Pages 上运行 Python · Pyodide 示例</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --border: #e3e6ea;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --err: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
+                 Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  }
+
+  #status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  #status .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--muted); flex: 0 0 auto;
+    transition: background .2s;
+  }
+  #status.loading .dot { background: var(--warn); animation: pulse 1s infinite; }
+  #status.ready   .dot { background: var(--ok); }
+  #status.error   .dot { background: var(--err); }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  label.block { display: block; font-size: .8rem; font-weight: 600;
+                color: var(--muted); margin: 0 0 6px; letter-spacing: .02em; }
+
+  textarea {
+    width: 100%;
+    min-height: 240px;
+    resize: vertical;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    tab-size: 4;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+  button {
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    transition: background .15s, border-color .15s, opacity .15s;
+  }
+  button:hover:not(:disabled) { background: #f0f2f5; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  button.primary:hover:not(:disabled) { background: #1d4ed8; }
+
+  pre#output {
+    margin: 0;
+    min-height: 96px;
+    max-height: 360px;
+    overflow: auto;
+    padding: 14px;
+    border-radius: 10px;
+    background: #0f172a;
+    color: #cbd5e1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  pre#output:empty::before {
+    content: "输出会显示在这里…";
+    color: #64748b;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>在浏览器里运行 Python</h1>
+  <p class="sub">
+    纯静态页面 · 由 Pyodide（CPython → WebAssembly）驱动 · 可直接部署到 GitHub Pages
+  </p>
+
+  <div class="card">
+    <div id="status" class="loading">
+      <span class="dot"></span>
+      <span id="status-text">正在准备…</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="block" for="code">PYTHON 代码</label>
+    <textarea id="code" spellcheck="false"></textarea>
+    <div class="toolbar">
+      <button id="run" class="primary" disabled>▶ 运行</button>
+      <button id="reset">↺ 恢复示例</button>
+      <button id="clear">清空输出</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="block">输出</label>
+    <pre id="output"></pre>
+  </div>
+
+</div>
+
+<!-- 从 CDN 加载 Pyodide 引导脚本；用绝对 URL，避免 GitHub Pages 子路径问题 -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // 固定版本号，并把 indexURL 指向 CDN：
+  // 这样即使站点部署在 username.github.io/repo/ 这样的子路径下，
+  // 运行时的 .wasm / .zip 资源也能被正确找到。
+  var PYODIDE_VERSION = "v0.26.2";
+  var PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/" + PYODIDE_VERSION + "/full/";
+
+  var EXAMPLE = [
+    "# 这段代码运行在你的浏览器里，不需要任何后端服务器。",
+    "import sys, platform",
+    "",
+    'print("Python", sys.version.split()[0], "| 平台:", platform.machine())',
+    'print("Hello from GitHub Pages 🎉")',
+    "",
+    "# 纯 Python 逻辑当然没问题",
+    "def fib(n):",
+    "    a, b = 0, 1",
+    "    for _ in range(n):",
+    "        a, b = b, a + b",
+    "    return a",
+    "",
+    "print(\"斐波那契前 15 项:\", [fib(i) for i in range(15)])",
+    "",
+    "# 试试用 micropip 安装纯 Python 包（去掉注释即可）：",
+    "# import micropip",
+    "# await micropip.install(\"six\")",
+    "# import six",
+    "# print(\"six 版本:\", six.__version__)",
+    ""
+  ].join("\n");
+
+  var pyodide = null;
+
+  var statusEl   = document.getElementById("status");
+  var statusText = document.getElementById("status-text");
+  var outputEl   = document.getElementById("output");
+  var codeEl     = document.getElementById("code");
+  var runBtn     = document.getElementById("run");
+  var resetBtn   = document.getElementById("reset");
+  var clearBtn   = document.getElementById("clear");
+
+  function setStatus(text, kind) {
+    statusText.textContent = text;
+    statusEl.className = kind || "";
+  }
+
+  function appendOutput(text) {
+    outputEl.textContent += (outputEl.textContent ? "\n" : "") + text;
+    outputEl.scrollTop = outputEl.scrollHeight;
+  }
+
+  async function init() {
+    codeEl.value = EXAMPLE;
+
+    if (typeof loadPyodide !== "function") {
+      setStatus("Pyodide 脚本加载失败：请检查网络或 CDN 是否可访问。", "error");
+      return;
+    }
+
+    setStatus("正在加载 Python 运行时（首次约 6–12 MB，请稍候）…", "loading");
+
+    try {
+      pyodide = await loadPyodide({ indexURL: PYODIDE_URL });
+
+      // 把 Python 的 stdout / stderr 接到页面上的输出框
+      pyodide.setStdout({ batched: appendOutput });
+      pyodide.setStderr({ batched: appendOutput });
+
+      setStatus("就绪 ✓ 可以运行 Python 了", "ready");
+      runBtn.disabled = false;
+    } catch (err) {
+      setStatus("初始化失败：" + (err && err.message ? err.message : err), "error");
+    }
+  }
+
+  async function runCode() {
+    if (!pyodide) return;
+
+    outputEl.textContent = "";
+    runBtn.disabled = true;
+    setStatus("运行中…", "loading");
+
+    var t0 = performance.now();
+    try {
+      // runPythonAsync 支持顶层 await，所以 micropip 那种异步安装也能写
+      await pyodide.runPythonAsync(codeEl.value);
+      var ms = Math.round(performance.now() - t0);
+      setStatus("运行完成（" + ms + " ms）", "ready");
+    } catch (err) {
+      appendOutput(String(err && err.message ? err.message : err));
+      setStatus("运行出错，详见下方输出", "error");
+    } finally {
+      runBtn.disabled = false;
+    }
+  }
+
+  runBtn.addEventListener("click", runCode);
+  resetBtn.addEventListener("click", function () { codeEl.value = EXAMPLE; });
+  clearBtn.addEventListener("click", function () { outputEl.textContent = ""; });
+
+  // Ctrl / Cmd + Enter 快捷运行
+  codeEl.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (!runBtn.disabled) runCode();
+    }
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
