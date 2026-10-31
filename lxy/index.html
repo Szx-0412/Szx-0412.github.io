@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>给陆欣怡的流星雨</title>
+    <style>
+        @-webkit-keyframes star-opacity {
+            0% {
+                opacity: 0
+            }
+
+            40% {
+                opacity: 1
+            }
+
+            60% {
+                opacity: 1
+            }
+
+            100% {
+                opacity: 0
+            }
+        }
+
+        @keyframes star-opacity {
+            0% {
+                opacity: 0
+            }
+
+            40% {
+                opacity: 1
+            }
+
+            60% {
+                opacity: 1
+            }
+
+            100% {
+                opacity: 0
+            }
+        }
+
+        @-webkit-keyframes star-move {
+            0% {
+                -webkit-transform: translate3d(0, 0, 0);
+                transform: translate3d(0, 0, 0)
+            }
+
+            100% {
+                -webkit-transform: translate3d(-450px, 450px, 0);
+                transform: translate3d(-450px, 450px, 0)
+            }
+        }
+
+        @keyframes star-move {
+            0% {
+                transform: translate3d(0, 0, 0)
+            }
+
+            100% {
+                transform: translate3d(-450px, 450px, 0)
+            }
+        }
+
+        @-webkit-keyframes star-scale {
+            0% {
+                -webkit-transform: scale(0);
+                transform: scale(0)
+            }
+
+            100% {
+                -webkit-transform: scale(1);
+                transform: scale(1)
+            }
+        }
+
+        @keyframes star-scale {
+            0% {
+                transform: scale(0)
+            }
+
+            100% {
+                transform: scale(1)
+            }
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        .index-bg {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(-225deg, #473B7B 0%, #3584A7 51%, #30D2BE 100%);
+            overflow: hidden;
+        }
+
+        .index-bg .stars {
+            height: 0
+        }
+
+        /* 外层：负责位移与整体透明度，文字挂在这一层所以不会被缩小 */
+        .index-bg .star {
+            display: block;
+            width: 5px;
+            height: 5px;
+            position: relative;
+            -webkit-transform-origin: 100% 0;
+            transform-origin: 100% 0;
+            -webkit-animation: star-opacity 5s infinite ease-in, star-move 5s infinite ease-in;
+            animation: star-opacity 5s infinite ease-in, star-move 5s infinite ease-in;
+            -webkit-animation-delay: var(--d, 0s);
+            animation-delay: var(--d, 0s);
+            opacity: 0;
+            z-index: 2
+        }
+
+        /* 星体：负责从无到有的缩放，自带光尾 */
+        .index-bg .star .dot {
+            display: block;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #fff;
+            -webkit-transform-origin: 100% 0;
+            transform-origin: 100% 0;
+            -webkit-animation: star-scale 5s infinite ease-in;
+            animation: star-scale 5s infinite ease-in;
+            -webkit-animation-delay: var(--d, 0s);
+            animation-delay: var(--d, 0s);
+            -webkit-box-shadow: 0 0 5px 5px rgba(255, 255, 255, .3);
+            box-shadow: 0 0 5px 5px rgba(255, 255, 255, .3)
+        }
+
+        .index-bg .star .dot:after {
+            content: '';
+            display: block;
+            top: 0;
+            left: 4px;
+            border: 0 solid #fff;
+            border-width: 0 90px 2px;
+            border-color: transparent transparent transparent rgba(255, 255, 255, .3);
+            -webkit-transform: rotate(-45deg) translate3d(1px, 3px, 0);
+            transform: rotate(-45deg) translate3d(1px, 3px, 0);
+            -webkit-box-shadow: 0 0 1px 0 rgba(255, 255, 255, .1);
+            box-shadow: 0 0 1px 0 rgba(255, 255, 255, .1);
+            -webkit-transform-origin: 0% 100%;
+            transform-origin: 0% 100%
+        }
+
+        /* 每颗流星显示一个字 */
+        .index-bg .star .star-char {
+            position: absolute;
+            right: 18px;
+            top: -14px;
+            white-space: nowrap;
+            font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 0;
+            color: #fff;
+            text-shadow:
+                0 0 8px rgba(255, 255, 255, 1),
+                0 0 18px rgba(120, 220, 255, .9),
+                0 0 30px rgba(120, 220, 255, .6),
+                0 0 44px rgba(180, 140, 255, .4);
+            pointer-events: none;
+            -webkit-user-select: none;
+            user-select: none
+        }
+    </style>
+</head>
+
+<body>
+    <div class="index-bg">
+        <div class="stars">
+            <!-- 社 -->
+            <div class="star" style="top: 80px; left: 300px; --d: 0s;"><i class="dot"></i><span class="star-char">社</span></div>
+            <!-- 会 -->
+            <div class="star" style="top: 140px; left: 520px; --d: 0.3s;"><i class="dot"></i><span class="star-char">会</span></div>
+            <!-- 没 -->
+            <div class="star" style="top: 60px; left: 760px; --d: 0.6s;"><i class="dot"></i><span class="star-char">没</span></div>
+            <!-- 有 -->
+            <div class="star" style="top: 180px; left: 980px; --d: 0.9s;"><i class="dot"></i><span class="star-char">有</span></div>
+            <!-- 通 -->
+            <div class="star" style="top: 100px; left: 1200px; --d: 1.2s;"><i class="dot"></i><span class="star-char">通</span></div>
+            <!-- 天 -->
+            <div class="star" style="top: 220px; left: 420px; --d: 1.5s;"><i class="dot"></i><span class="star-char">天</span></div>
+            <!-- 树 -->
+            <div class="star" style="top: 50px; left: 1100px; --d: 1.8s;"><i class="dot"></i><span class="star-char">树</span></div>
+            <!-- 陆 -->
+            <div class="star" style="top: 120px; left: 200px; --d: 2.1s;"><i class="dot"></i><span class="star-char">陆</span></div>
+            <!-- 欣 -->
+            <div class="star" style="top: 200px; left: 880px; --d: 2.4s;"><i class="dot"></i><span class="star-char">欣</span></div>
+            <!-- 怡 -->
+            <div class="star" style="top: 40px; left: 600px; --d: 2.7s;"><i class="dot"></i><span class="star-char">怡</span></div>
+            <!-- 最 -->
+            <div class="star" style="top: 280px; left: 1100px; --d: 3.0s;"><i class="dot"></i><span class="star-char">最</span></div>
+            <!-- 强 -->
+            <div class="star" style="top: 90px; left: 940px; --d: 3.3s;"><i class="dot"></i><span class="star-char">强</span></div>
+            <!-- 你 -->
+            <div class="star" style="top: 160px; left: 350px; --d: 3.6s;"><i class="dot"></i><span class="star-char">你</span></div>
+            <!-- 记 -->
+            <div class="star" style="top: 240px; left: 780px; --d: 3.9s;"><i class="dot"></i><span class="star-char">记</span></div>
+            <!-- 住 -->
+            <div class="star" style="top: 70px; left: 1320px; --d: 4.2s;"><i class="dot"></i><span class="star-char">住</span></div>
+        </div>
+    </div>
+</body>
+
+</html>
